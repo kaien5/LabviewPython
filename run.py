@@ -9,7 +9,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import QObject, pyqtSignal, QThread
 
 # Check variable used for controlling the worker thread
-check = True
+# check = True
 
 
 class Worker1(QObject):
@@ -42,7 +42,20 @@ class ApplicationController(Worker1):
     def start(self):
         global check
         check = True
-        self.reset = True
+
+        try:
+            # Connecting to the TCP listen (Labview)
+            client_start = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_address = ('localhost', 6330)
+            client_start.connect(server_address)
+
+            # Sending message 'start'
+            client_start.send('start'.encode('utf-8'))
+            client_start.close()
+            self.ui.start_button.setEnabled(False)
+
+        except Exception as e:
+            print(e)
 
         self.thread1 = QThread()
         self.worker1 = Worker1()
@@ -60,51 +73,35 @@ class ApplicationController(Worker1):
     def update(self):
         global check
         try:
-            self.reset = False
-            # Connecting to the TCP listen (Labview)
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            server_address = ('localhost', 6340)
-            client.connect(server_address)
-
-            # Sending message 'start'
-            client.send('start'.encode('utf-8'))
-            client.close()
-
-        except Exception as e:
-            print(e)
-
-        try:
             # Connecting to the TCP open connection (Labview)
-            server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            server.bind(('localhost', 6350))
-            server.listen(1)
+            server_update = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_update.bind(('localhost', 6350))
+            server_update.listen(1)
 
-            receive, adr = server.accept()
+            receive, adr = server_update.accept()
             cmnd = receive.recv(12).decode('utf-8')
             print(cmnd[4:])
             self.ui.data_line.setText(cmnd[4:])
-            server.close()
+            server_update.close()
 
         except Exception as e:
-            check = False
-            server.close()
             print(e)
 
     # When the stop button is clicked, the def stop(self): will set the Worker1 class to terminate itself and updating will cease
     def stop(self):
         global check
         check = False
-        self.reset = True
 
         try:
             # Connecting to the TCP listen (Labview)
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_stop = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server_address = ('localhost', 6340)
-            client.connect(server_address)
+            client_stop.connect(server_address)
 
             # Sending message 'stop'
-            client.send('stop'.encode('utf-8'))
-            client.close()
+            client_stop.send('stop'.encode('utf-8'))
+            client_stop.close()
+            self.ui.start_button.setEnabled(True)
 
         except Exception as e:
             print(e)
