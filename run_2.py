@@ -15,8 +15,6 @@ def ascii_message(text):
         message = text + amount_null * ' '
         message = message.encode('ascii')
         return message
-    else:
-        print('The text is too long, maximum of 32 characters')
 
 
 # For more information on what format to use in pack: https://docs.python.org/3/library/struct.html
@@ -123,14 +121,14 @@ class ApplicationController(Worker1):
         command = self.ui.command_line.text()
         payload = self.ui.payload_double.value()
 
-        indicator_message = ascii_message(indicator)
-        command_message = ascii_message(command)
-        payload_message = pack_payload(payload)
+        if len(indicator) < 32 and len(command) < 32:
+            indicator_message = ascii_message(indicator)
+            command_message = ascii_message(command)
+            payload_message = pack_payload(payload)
 
-        message = indicator_message + command_message + payload_message
-        print(message)
+            message = indicator_message + command_message + payload_message
+            self.client_message.sendall(message)
 
-        self.client_message.sendall(message)
         self.client_message.close()
 
         if command == 'STOP':
@@ -139,16 +137,17 @@ class ApplicationController(Worker1):
     # The update function, checking the random data from Labview
     def update(self):
 
-        # Connecting to the TCP open connection (Labview)
-        self.server_update = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_update.bind(('localhost', 6350))
-        self.server_update.listen(1)
-
         try:
+            # Connecting to the TCP open connection (Labview)
+            self.server_update = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.server_update.bind(('localhost', 6350))
+            self.server_update.listen(1)
+
             receive, adr = self.server_update.accept()
             cmnd = receive.recv(12).decode('utf-8')
             print(cmnd[4:])
             self.ui.data_line.setText(cmnd[4:])
+
             self.server_update.close()
 
         except Exception as e:
